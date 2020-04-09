@@ -20,7 +20,7 @@ many1 fn str = case fn str of
         Nothing -> Just (l:[], rem)
 
 recordPos :: Parser a -> Parser (SourcePos, a)
-recordPos fn str = let pos = getPos str in fmap (\a -> (pos, a)) (fn str)
+recordPos fn str = let pos = getPos str in fmap (\(a, rem) -> ((pos, a), rem)) (fn str)
 
 satisfies :: (Char -> Bool) -> Parser Char
 satisfies condition (Stream (c:str) pos) = if condition c then Just (c, (Stream str (nextPos pos))) else Nothing
