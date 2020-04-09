@@ -4,4 +4,4 @@ TODO
 
 ## Contents
 
-[Chapter 1](1.md)
+[Types](types.md)

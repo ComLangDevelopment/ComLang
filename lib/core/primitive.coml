@@ -1,0 +1,14 @@
+
+
+@lang_item(bool_module)
+public mod bool{
+    impl bool{
+
+    }
+    impl Not for bool{
+        type Output = bool;
+        @intrinsic_export(bool.not)
+        function :not(self)-> Self::Output;
+    }
+}
+
