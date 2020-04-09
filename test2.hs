@@ -2,8 +2,13 @@ import System.IO
 import Data.Char
 
 data SourcePos = Pos Int Int
+
+nextPos :: SourcePos -> SourcePos
+nextPos (Pos a b) = Pos a (b+1)
+
 data Stream = Stream String SourcePos
-type Parser a = String -> Maybe (a, String)
+
+type Parser a = Stream -> Maybe (a, Stream)
 
 many1 :: Parser a -> Parser [a]
 many1 fn str = case fn str of
@@ -12,10 +17,7 @@ many1 fn str = case fn str of
         Nothing -> Just (l:[], rem)
 
 satisfies :: (Char -> Bool) -> Parser Char
-satisfies condition (c:str) = if condition c then Just (c, str) else Nothing
+satisfies condition (Stream (c:str) pos) = if condition c then Just (c, (Stream str (nextPos pos))) else Nothing
 
 identLexer :: Parser String
-identLexer (c:str) = many1 (satisfies isAlphaNum)
-
-intLexer :: Parser Integer
-intLexer (c:str)
+identLexer = many1 (satisfies isAlphaNum)
