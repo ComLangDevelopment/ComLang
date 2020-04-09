@@ -21,7 +21,12 @@ library
   -- exposed-modules:
   -- other-modules:
   -- other-extensions:
-  build-depends:       base ^>=4.12.0.0
+  build-depends:
+    base ^>=4.12.0.0,
+    containers ^>=0.6.2.1,
+    text ^>=1.2.4.0,
+    parsec ^>=3.1.14.0,
+    llvm-hs ^>=9.0.1,
   -- hs-source-dirs:
   default-language:    Haskell2010
 
