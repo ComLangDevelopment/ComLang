@@ -1,0 +1,25 @@
+
+@operator(add)
+public trait Add<U=Self>{
+    type Output;
+    function :add(self,other: U) -> Self::Output;
+}
+
+@operator(sub)
+public trait Sub<U=Self>{
+    type Output;
+    function :sub(self,other: U) -> Self::Output;
+}
+
+@operator(mul)
+public trait Mul<U=Self>{
+    type Output;
+    function :mul(self,other: U) -> Self::Output;
+}
+
+@operator(div)
+public trait Div<U=Self>{
+    type Output;
+    function :div(self,other: U) -> Self::Output;
+}
+

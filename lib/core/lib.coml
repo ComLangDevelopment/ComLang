@@ -1,0 +1,9 @@
+@no_link(core)
+@no_link(std)
+@enable(lang_items)
+@enable(operator_traits)
+@enable(primitive_modules)
+library core;
+
+export module primitive;
+export module ops;
