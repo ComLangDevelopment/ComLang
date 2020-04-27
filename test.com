@@ -2,6 +2,7 @@
 #load "./mycode.com"
 #run build(true);
 
+
 @compile
 build: (run :bool) -> void = {
 	#compile_time compiler_save_ctarget("build.c");
