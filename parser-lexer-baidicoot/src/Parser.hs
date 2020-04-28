@@ -1,95 +1,88 @@
 module Parser where
 
-import Text.Parsec.String (Parser) -- assuming we work on strings
+import Data.Bifunctor (Bifunctor(bimap))
+import Data.Char
+import Data.Functor.Identity
+import Data.Functor (($>))
+import Control.Applicative (Alternative((<|>)))
+
+import Text.Parsec.String (Parser)  -- assuming we work on strings
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.Token
 
-import Data.Functor.Identity
-import Data.Functor (($>))
-import Control.Applicative hiding(Const)
-
 import AST
 
+-- TODO: backtracking
+
 lexer :: GenTokenParser String () Identity
-lexer = makeTokenParser $ emptyDef {
-    reservedOpNames = [";", ":"],
-    commentStart = "/*", commentEnd = "*/",
-    commentLine = "//",
-    nestedComments = True,
-    reservedNames = []
-}
+lexer = makeTokenParser $ emptyDef
+    { commentStart = "/*"
+    , commentEnd = "*/"
+    , commentLine = "//"
+    , identStart = satisfy (\c -> isAsciiUpper c || isAsciiLower c || c == '_')
+    , identLetter = satisfy (\c -> isAsciiUpper c || isAsciiLower c || isDigit c || c == '_')
+    , nestedComments = True
+    , reservedNames = ["true", "false", "if", "while", "mut", "const", "extern"]
+    , reservedOpNames = [":", "*", "&", "+", "-", "/"]
+    }
 
-arrayType :: Parser Type
-arrayType = do
-    char '['
-    t <- typeParser
-    char ';'
-    i <- integer lexer
-    char ']'
-    return (Array t i)
+-- expressions
 
-sliceType :: Parser Type
-sliceType = do
-    char '['
+expression :: Parser Expr
+expression = Literal <$> literal
+
+literal :: Parser Lit
+literal = CharLit <$> charLiteral lexer
+    <|> StringLit <$> stringLiteral lexer
+    <|> reserved lexer "true" $> BoolLit True <|> reserved lexer "false" $> BoolLit False
+    <|> either IntLit FloatLit <$> (lexeme lexer sign <*> naturalOrFloat lexer)
+  where
+    sign = (char '-' $> bimap negate negate) <|> (char '+' $> id) <|> pure id
+
+-- types
+
+typeParser :: Parser Type
+typeParser = App <$> identifier lexer <*> genericArgs
+    <|> ptrType
+    <|> refType
+    <|> tupleType
+    <|> arrayOrSliceType
+
+genericArgs :: Parser [Type]
+genericArgs = concat <$> (optionMaybe $ brackets lexer (typeParser `sepEndBy1` comma lexer))
+
+arrayOrSliceType :: Parser Type
+arrayOrSliceType = brackets lexer $ do
     t <- typeParser
-    char ']'
-    return (Slice t)
+    i <- optionMaybe $ semi lexer *> expression
+    pure $ case i of
+        Just i -> Array t i
+        Nothing -> Slice t
 
 argType :: Parser [Type]
-argType = do
-    t <- typeParser
-    char ','
-    ts <- argType
-    return (t:ts)
+argType = typeParser `sepEndBy` comma lexer
 
 tupleType :: Parser Type
 tupleType = Tuple <$> parens lexer argType
 
 typeDec :: Parser TypeDec
-typeDec =
-        symbol lexer "mut"      $> Mut
-    <|> symbol lexer "const"    $> Const
-    <|> symbol lexer "extern"   $> Extern
-    <|> return None
+typeDec = reserved lexer "mut"  $> Mut
+    <|> reserved lexer "const"  $> Const
+    <|> reserved lexer "extern" $> Extern
+    <|> pure None
 
 ptrType :: Parser Type
 ptrType = do
-    char '*'
+    reservedOp lexer "*"
     d <- typeDec
     t <- typeParser
-    return (Ptr d t)
+    pure (Ptr d t)
 
 refType :: Parser Type
 refType = do
-    char '&'
+    reservedOp lexer "&"
     d <- typeDec
     t <- typeParser
-    return (Ptr d t)
-
-builtin :: Parser Type
-builtin =
-        symbol lexer "bool"     $> Bool
-    <|> symbol lexer "!"        $> Bottom
-    <|> symbol lexer "u8"       $> IntT U8
-    <|> symbol lexer "u16"      $> IntT U16
-    <|> symbol lexer "u32"      $> IntT U32
-    <|> symbol lexer "u64"      $> IntT U64
-    <|> symbol lexer "u128"     $> IntT U128
-    <|> symbol lexer "usize"    $> IntT USize
-    <|> symbol lexer "i8"       $> IntT I8
-    <|> symbol lexer "i16"      $> IntT I16
-    <|> symbol lexer "i32"      $> IntT I32
-    <|> symbol lexer "i64"      $> IntT I64
-    <|> symbol lexer "i128"     $> IntT I128
-    <|> symbol lexer "isize"    $> IntT ISize
-
-typeParser :: Parser Type
-typeParser =
-        builtin
-    <|> ptrType
-    <|> refType
-    <|> tupleType
-    <|> sliceType
-    <|> arrayType
+    pure (Ptr d t)
