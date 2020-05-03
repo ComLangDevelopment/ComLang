@@ -1,7 +1,8 @@
 module AST where
 
 data Expr
-    = Literal Lit
+    = Identifier String
+    | Literal Lit
     deriving Show
 
 data Lit
@@ -10,7 +11,7 @@ data Lit
     | StringLit String
     | CharLit Char
     | BStringLit String
-    | BCharit Char
+    | BCharLit Char
     | BoolLit Bool
     deriving Show
 

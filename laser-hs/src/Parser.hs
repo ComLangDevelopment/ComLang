@@ -4,17 +4,13 @@ import Data.Bifunctor (Bifunctor(bimap))
 import Data.Char
 import Data.Functor.Identity
 import Data.Functor (($>))
-import Control.Applicative (Alternative((<|>)))
 
+import Text.Parsec
 import Text.Parsec.String (Parser)  -- assuming we work on strings
 import Text.Parsec.Language (emptyDef)
-import Text.Parsec.Char
-import Text.Parsec.Combinator
 import Text.Parsec.Token
 
 import AST
-
--- TODO: backtracking
 
 lexer :: GenTokenParser String () Identity
 lexer = makeTokenParser $ emptyDef
@@ -31,13 +27,16 @@ lexer = makeTokenParser $ emptyDef
 -- expressions
 
 expression :: Parser Expr
-expression = Literal <$> literal
+expression = Identifier <$> identifier lexer
+    <|> Literal <$> literal
+    <?> "expression"
 
 literal :: Parser Lit
 literal = CharLit <$> charLiteral lexer
     <|> StringLit <$> stringLiteral lexer
     <|> reserved lexer "true" $> BoolLit True <|> reserved lexer "false" $> BoolLit False
     <|> either IntLit FloatLit <$> (lexeme lexer sign <*> naturalOrFloat lexer)
+    <?> "literal"
   where
     sign = (char '-' $> bimap negate negate) <|> (char '+' $> id) <|> pure id
 
@@ -49,9 +48,10 @@ typeParser = App <$> identifier lexer <*> genericArgs
     <|> refType
     <|> tupleType
     <|> arrayOrSliceType
+    <?> "type"
 
 genericArgs :: Parser [Type]
-genericArgs = concat <$> (optionMaybe $ brackets lexer (typeParser `sepEndBy1` comma lexer))
+genericArgs = concat <$> optionMaybe (brackets lexer (typeParser `sepEndBy1` comma lexer))
 
 arrayOrSliceType :: Parser Type
 arrayOrSliceType = brackets lexer $ do
@@ -76,13 +76,9 @@ typeDec = reserved lexer "mut"  $> Mut
 ptrType :: Parser Type
 ptrType = do
     reservedOp lexer "*"
-    d <- typeDec
-    t <- typeParser
-    pure (Ptr d t)
+    Ptr <$> typeDec <*> typeParser
 
 refType :: Parser Type
 refType = do
     reservedOp lexer "&"
-    d <- typeDec
-    t <- typeParser
-    pure (Ptr d t)
+    Ref <$> typeDec <*> typeParser
